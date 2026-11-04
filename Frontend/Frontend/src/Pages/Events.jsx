@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import api from "../ApiClient/api";
 
 export default function Events() {
   const [events, setEvents] = useState([]);
@@ -18,23 +19,17 @@ export default function Events() {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/events/get-event",
-        {
-          method: "GET",
-          credentials: "include",
-        }
+      const response = await api.get("/api/events/get-event");
+
+      setEvents(
+        Array.isArray(response.data.events)
+          ? response.data.events
+          : []
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch events.");
-      }
-
-      setEvents(Array.isArray(data.events) ? data.events : []);
     } catch (err) {
-      setError(err.message || "Unable to load events.");
+      setError(
+        err.response?.data?.message || "Unable to load events."
+      );
     } finally {
       setLoading(false);
     }
@@ -42,20 +37,8 @@ export default function Events() {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/get-user",
-        {
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch user.");
-      }
-
-      setCurrentUser(data.user || data);
+      const response = await api.get("/api/auth/get-user");
+      setCurrentUser(response.data.user || response.data);
     } catch (err) {
       console.error("User fetch error:", err);
     }
@@ -83,26 +66,13 @@ export default function Events() {
     setCreating(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/events/create-event",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(form),
-        }
+      const response = await api.post(
+        "/api/events/create-event",
+        form
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Event creation failed.");
-      }
-
       setMessage(
-        data.message || "Event created successfully!"
+        response.data.message || "Event created successfully!"
       );
 
       setForm({
@@ -115,7 +85,9 @@ export default function Events() {
 
       await fetchEvents();
     } catch (err) {
-      setError(err.message || "Unable to create event.");
+      setError(
+        err.response?.data?.message || "Unable to create event."
+      );
     } finally {
       setCreating(false);
     }

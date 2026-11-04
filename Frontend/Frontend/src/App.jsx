@@ -25,6 +25,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import api from "./ApiClient/api";
+
 import Dashboard from "./Pages/Dashboard";
 import Announcements from "./Pages/Announcements";
 import Events from "./Pages/Events";
@@ -112,21 +114,9 @@ function AppLayout() {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/auth/get-user",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        const response = await api.get("/api/auth/get-user");
 
-        if (!response.ok) {
-          setCurrentUser(null);
-          localStorage.removeItem("user");
-          return;
-        }
-
-        const data = await response.json();
+        const data = response.data;
 
         setCurrentUser(data);
 
@@ -142,6 +132,7 @@ function AppLayout() {
       } catch (error) {
         console.error("Failed to fetch user:", error);
         setCurrentUser(null);
+        localStorage.removeItem("user");
       } finally {
         setUserLoading(false);
       }
@@ -156,17 +147,7 @@ function AppLayout() {
     setLoggingOut(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/logout",
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
+      await api.post("/api/auth/logout");
 
       setCurrentUser(null);
       localStorage.removeItem("user");

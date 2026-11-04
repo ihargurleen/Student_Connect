@@ -1,8 +1,5 @@
-
 import { useEffect, useState } from "react";
-
-const API = "http://localhost:5000/api/lostFound";
-const AUTH_API = "http://localhost:5000/api/auth";
+import api from "../ApiClient/api";
 
 const initialForm = {
   title: "",
@@ -26,19 +23,15 @@ function LostFound() {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch(`${AUTH_API}/get-user`, {
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to fetch user.");
-      }
-
-      setCurrentUser(data.user || data.currentUser || data);
+      const response = await api.get("/api/auth/get-user");
+      setCurrentUser(
+        response.data.user || response.data.currentUser || response.data
+      );
     } catch (err) {
-      setError(err.message || "Unable to fetch user.");
+      setCurrentUser(null);
+      setError(
+        err.response?.data?.message || "Unable to fetch user."
+      );
     }
   };
 
@@ -46,19 +39,15 @@ function LostFound() {
     try {
       setError("");
 
-      const response = await fetch(`${API}/get-lost`, {
-        credentials: "include",
-      });
+      const response = await api.get("/api/lostFound/get-lost");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch items.");
-      }
-
-      setItems(Array.isArray(data.items) ? data.items : []);
+      setItems(
+        Array.isArray(response.data.items) ? response.data.items : []
+      );
     } catch (err) {
-      setError(err.message || "Unable to load items.");
+      setError(
+        err.response?.data?.message || "Unable to load items."
+      );
     } finally {
       setLoading(false);
     }
@@ -110,32 +99,21 @@ function LostFound() {
     try {
       const isEditing = Boolean(editingId);
 
-      const response = await fetch(
-        isEditing
-          ? `${API}/update-lost/${editingId}`
-          : `${API}/create-lost`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
-        }
-      );
+      const response = isEditing
+        ? await api.put(
+            `/api/lostFound/update-lost/${editingId}`,
+            form
+          )
+        : await api.post("/api/lostFound/create-lost", form);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to save item.");
-      }
-
-      setMessage(data.message || "Item saved successfully.");
+      setMessage(response.data.message || "Item saved successfully.");
 
       resetForm();
       await fetchItems();
     } catch (err) {
-      setError(err.message || "Unable to save item.");
+      setError(
+        err.response?.data?.message || "Unable to save item."
+      );
     } finally {
       setSaving(false);
     }
@@ -176,21 +154,11 @@ function LostFound() {
     setMessage("");
 
     try {
-      const response = await fetch(
-        `${API}/delete-lost/${item._id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
+      const response = await api.delete(
+        `/api/lostFound/delete-lost/${item._id}`
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to delete item.");
-      }
-
-      setMessage(data.message || "Item deleted successfully.");
+      setMessage(response.data.message || "Item deleted successfully.");
 
       if (editingId === item._id) {
         resetForm();
@@ -198,7 +166,9 @@ function LostFound() {
 
       await fetchItems();
     } catch (err) {
-      setError(err.message || "Unable to delete item.");
+      setError(
+        err.response?.data?.message || "Unable to delete item."
+      );
     }
   };
 

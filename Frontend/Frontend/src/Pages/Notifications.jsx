@@ -1,5 +1,5 @@
-
 import { useEffect, useState } from "react";
+import api from "../ApiClient/api";
 
 function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -16,7 +16,7 @@ function Notifications() {
     recipientRole: "",
     title: "",
     message: "",
-    type: "General"
+    type: "General",
   });
 
   const fetchNotifications = async () => {
@@ -24,24 +24,20 @@ function Notifications() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(
-        "http://localhost:5000/api/notification/my-notifications",
-        { credentials: "include" }
+      const response = await api.get(
+        "/api/notification/my-notifications"
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch notifications.");
-      }
-
       setNotifications(
-        Array.isArray(data.notifications)
-          ? data.notifications
+        Array.isArray(response.data.notifications)
+          ? response.data.notifications
           : []
       );
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message ||
+        "Failed to fetch notifications."
+      );
     } finally {
       setLoading(false);
     }
@@ -49,20 +45,14 @@ function Notifications() {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/get-user",
-        { credentials: "include" }
-      );
+      const response = await api.get("/api/auth/get-user");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch user.");
-      }
-
-      setCurrentUser(data.user || data);
+      setCurrentUser(response.data.user || response.data);
     } catch (err) {
-      setError(err.message);
+      setCurrentUser(null);
+      setError(
+        err.response?.data?.message || "Failed to fetch user."
+      );
     }
   };
 
@@ -76,7 +66,7 @@ function Notifications() {
 
     setForm((current) => ({
       ...current,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -88,35 +78,28 @@ function Notifications() {
       setError("");
       setMessage("");
 
-      const response = await fetch(
-        "http://localhost:5000/api/notification/create-notification",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(form)
-        }
+      const response = await api.post(
+        "/api/notification/create-notification",
+        form
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to create notification.");
-      }
-
-      setMessage(data.message || "Notification sent successfully!");
+      setMessage(
+        response.data.message || "Notification sent successfully!"
+      );
 
       setForm({
         recipientRole: "",
         title: "",
         message: "",
-        type: "General"
+        type: "General",
       });
 
+      await fetchNotifications();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message ||
+        "Failed to create notification."
+      );
     } finally {
       setCreating(false);
     }
@@ -128,19 +111,7 @@ function Notifications() {
       setError("");
       setMessage("");
 
-      const response = await fetch(
-        `http://localhost:5000/api/notification/mark-read/${id}`,
-        {
-          method: "PUT",
-          credentials: "include"
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to mark as read.");
-      }
+      await api.put(`/api/notification/mark-read/${id}`);
 
       setNotifications((current) =>
         current.map((item) =>
@@ -152,7 +123,10 @@ function Notifications() {
 
       setMessage("Notification marked as read.");
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message ||
+        "Failed to mark as read."
+      );
     } finally {
       setProcessingId("");
     }
@@ -169,19 +143,9 @@ function Notifications() {
       setMessage("");
 
       for (const item of unread) {
-        const response = await fetch(
-          `http://localhost:5000/api/notification/mark-read/${item._id}`,
-          {
-            method: "PUT",
-            credentials: "include"
-          }
+        await api.put(
+          `/api/notification/mark-read/${item._id}`
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to update notification.");
-        }
 
         setNotifications((current) =>
           current.map((notification) =>
@@ -194,7 +158,10 @@ function Notifications() {
 
       setMessage("All notifications marked as read.");
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message ||
+        "Failed to update notification."
+      );
     } finally {
       setMarkingAll(false);
     }
@@ -206,27 +173,22 @@ function Notifications() {
       setError("");
       setMessage("");
 
-      const response = await fetch(
-        `http://localhost:5000/api/notification/delete-notification/${id}`,
-        {
-          method: "DELETE",
-          credentials: "include"
-        }
+      const response = await api.delete(
+        `/api/notification/delete-notification/${id}`
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to delete notification.");
-      }
 
       setNotifications((current) =>
         current.filter((item) => item._id !== id)
       );
 
-      setMessage("Notification deleted successfully.");
+      setMessage(
+        response.data.message || "Notification deleted successfully."
+      );
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message ||
+        "Failed to delete notification."
+      );
     } finally {
       setProcessingId("");
     }
@@ -252,7 +214,6 @@ function Notifications() {
 
   return (
     <div className="page-content notifications-page">
-
       <div className="notifications-header">
         <div>
           <h1>Notifications</h1>
@@ -372,9 +333,17 @@ function Notifications() {
         </select>
       </div>
 
-      {error && <p role="alert" className="notification-error">{error}</p>}
+      {error && (
+        <p role="alert" className="notification-error">
+          {error}
+        </p>
+      )}
 
-      {message && <p role="status" className="notification-success">{message}</p>}
+      {message && (
+        <p role="status" className="notification-success">
+          {message}
+        </p>
+      )}
 
       {loading && <p>Loading notifications...</p>}
 
@@ -405,9 +374,13 @@ function Notifications() {
                   <h3>{notification.title}</h3>
                 </div>
 
-                <span className={`notification-status ${
-                  notification.isRead ? "read-status" : "unread-status"
-                }`}>
+                <span
+                  className={`notification-status ${
+                    notification.isRead
+                      ? "read-status"
+                      : "unread-status"
+                  }`}
+                >
                   {notification.isRead ? "Read" : "Unread"}
                 </span>
               </div>

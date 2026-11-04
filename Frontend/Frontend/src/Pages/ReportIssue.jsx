@@ -1,7 +1,5 @@
-
 import { useEffect, useState } from "react";
-
-const API = "http://localhost:5000/api";
+import api from "../ApiClient/api";
 
 const initialFormData = {
   title: "",
@@ -25,19 +23,17 @@ function ReportIssue() {
     try {
       setFetching(true);
 
-      const response = await fetch(`${API}/issues/get-issue`, {
-        credentials: "include",
-      });
+      const response = await api.get("/api/issues/get-issue");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch issues.");
-      }
-
-      setIssues(Array.isArray(data.issues) ? data.issues : []);
+      setIssues(
+        Array.isArray(response.data.issues)
+          ? response.data.issues
+          : []
+      );
     } catch (error) {
-      setMessage(error.message);
+      setMessage(
+        error.response?.data?.message || "Failed to fetch issues."
+      );
       setIsError(true);
     } finally {
       setFetching(false);
@@ -46,15 +42,8 @@ function ReportIssue() {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(`${API}/auth/get-user`, {
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setCurrentUser(data.user || data);
-      }
+      const response = await api.get("/api/auth/get-user");
+      setCurrentUser(response.data.user || response.data);
     } catch {
       setCurrentUser(null);
     }
@@ -85,28 +74,15 @@ function ReportIssue() {
     try {
       const isEditing = Boolean(editingId);
 
-      const response = await fetch(
-        isEditing
-          ? `${API}/issues/update-issue/${editingId}`
-          : `${API}/issues/create-issue`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Request failed.");
-      }
+      const response = isEditing
+        ? await api.put(
+            `/api/issues/update-issue/${editingId}`,
+            formData
+          )
+        : await api.post("/api/issues/create-issue", formData);
 
       setMessage(
-        data.message ||
+        response.data.message ||
           (isEditing
             ? "Issue updated successfully!"
             : "Issue reported successfully!")
@@ -116,7 +92,7 @@ function ReportIssue() {
       setEditingId(null);
       await fetchIssues();
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error.response?.data?.message || "Request failed.");
       setIsError(true);
     } finally {
       setLoading(false);
@@ -161,28 +137,20 @@ function ReportIssue() {
       setMessage("");
       setIsError(false);
 
-      const response = await fetch(
-        `${API}/issues/delete-issue/${id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
+      const response = await api.delete(
+        `/api/issues/delete-issue/${id}`
       );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to delete issue.");
-      }
 
       if (editingId === id) {
         cancelEdit();
       }
 
-      setMessage(data.message || "Issue deleted successfully!");
+      setMessage(response.data.message || "Issue deleted successfully!");
       await fetchIssues();
     } catch (error) {
-      setMessage(error.message);
+      setMessage(
+        error.response?.data?.message || "Failed to delete issue."
+      );
       setIsError(true);
     }
   };
@@ -353,8 +321,12 @@ function ReportIssue() {
                 <h3>{issue.title}</h3>
 
                 <div className="issue-details">
-                  <p><strong>Location:</strong> {issue.location}</p>
-                  <p><strong>Description:</strong> {issue.description}</p>
+                  <p>
+                    <strong>Location:</strong> {issue.location}
+                  </p>
+                  <p>
+                    <strong>Description:</strong> {issue.description}
+                  </p>
                   <p>
                     <strong>Reported by:</strong>{" "}
                     {issue.reportedBy?.userName || "Unknown"}

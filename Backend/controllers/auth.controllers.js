@@ -3,6 +3,13 @@ import { User } from "../models/user.models.js";
 import bcrypt from "bcryptjs";
 import { genToken } from "../utils/genToken.js";
 
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 24 * 60 * 60 * 1000
+};
+
 export const signup = async (req, res) => {
     try {
         const { userName, email, password } = req.body;
@@ -89,12 +96,7 @@ export const login = async (req, res) => {
             user.role
         );
 
-        return res.status(200).cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "strict",
-            maxAge: 20 * 60 * 60 * 1000
-        }).json({
+        return res.status(200).cookie("token", token, cookieOptions).json({
             message: "Login Successfully",
             user: {
                 id: user._id,
@@ -133,7 +135,11 @@ export const getUser = async (req, res) => {
 
 export const logout = async (req, res) => {
     try {
-        return res.clearCookie("token").status(200).json({
+        return res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax"
+        }).status(200).json({
             message: "Logout successfully"
         });
     } catch (err) {

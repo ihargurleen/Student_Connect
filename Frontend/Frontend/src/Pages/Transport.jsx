@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-
-const API = "http://localhost:5000/api/transport";
-const AUTH_API = "http://localhost:5000/api/auth";
+import api from "../ApiClient/api";
 
 const initialForm = {
   routeName: "",
@@ -30,19 +28,15 @@ function Transport() {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(`${AUTH_API}/get-user`, {
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to fetch user.");
-      }
-
-      setCurrentUser(data.user || data.currentUser || data);
+      const response = await api.get("/api/auth/get-user");
+      setCurrentUser(
+        response.data.user || response.data.currentUser || response.data
+      );
     } catch (err) {
-      setError(err.message);
+      setCurrentUser(null);
+      setError(
+        err.response?.data?.message || "Unable to fetch user."
+      );
     }
   };
 
@@ -50,19 +44,17 @@ function Transport() {
     try {
       setError("");
 
-      const response = await fetch(`${API}/get-transport`, {
-        credentials: "include",
-      });
+      const response = await api.get("/api/transport/get-transport");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch transports.");
-      }
-
-      setTransports(Array.isArray(data.transports) ? data.transports : []);
+      setTransports(
+        Array.isArray(response.data.transports)
+          ? response.data.transports
+          : []
+      );
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Failed to fetch transports."
+      );
     } finally {
       setLoading(false);
     }
@@ -106,31 +98,26 @@ function Transport() {
         availableSeats: Number(form.availableSeats),
       };
 
-      const response = await fetch(
-        editingId
-          ? `${API}/update-transport/${editingId}`
-          : `${API}/create-transport`,
-        {
-          method: editingId ? "PUT" : "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
+      const response = editingId
+        ? await api.put(
+            `/api/transport/update-transport/${editingId}`,
+            payload
+          )
+        : await api.post(
+            "/api/transport/create-transport",
+            payload
+          );
+
+      setMessage(
+        response.data.message || "Transport saved successfully."
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Transport operation failed.");
-      }
-
-      setMessage(data.message || "Transport saved successfully.");
       resetForm();
       await fetchTransports();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Transport operation failed."
+      );
     } finally {
       setSaving(false);
     }
@@ -157,13 +144,18 @@ function Transport() {
 
     setError("");
     setMessage("");
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id) => {
     if (!isAdmin) return;
 
-    if (!window.confirm("Are you sure you want to delete this transport route?")) {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this transport route?"
+      )
+    ) {
       return;
     }
 
@@ -171,23 +163,21 @@ function Transport() {
       setError("");
       setMessage("");
 
-      const response = await fetch(`${API}/delete-transport/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to delete transport.");
-      }
+      const response = await api.delete(
+        `/api/transport/delete-transport/${id}`
+      );
 
       if (editingId === id) resetForm();
 
-      setMessage(data.message || "Transport deleted successfully.");
+      setMessage(
+        response.data.message || "Transport deleted successfully."
+      );
+
       await fetchTransports();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Failed to delete transport."
+      );
     }
   };
 
@@ -346,8 +336,17 @@ function Transport() {
         </section>
       )}
 
-      {error && <p className="transport-error" role="alert">{error}</p>}
-      {message && <p className="transport-success" role="status">{message}</p>}
+      {error && (
+        <p className="transport-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {message && (
+        <p className="transport-success" role="status">
+          {message}
+        </p>
+      )}
 
       <section className="available-transport">
         <div className="transport-list-heading">
@@ -384,7 +383,9 @@ function Transport() {
               <article className="transport-card" key={transport._id}>
                 <div className="transport-card-header">
                   <div>
-                    <span className="transport-bus-label">BUS {transport.busNumber}</span>
+                    <span className="transport-bus-label">
+                      BUS {transport.busNumber}
+                    </span>
                     <h3>{transport.routeName}</h3>
                   </div>
 
@@ -414,16 +415,21 @@ function Transport() {
                 <div className="transport-details">
                   <p>
                     <span>Stops</span>
-                    <strong>{transport.stops?.join(", ") || "No stops added"}</strong>
+                    <strong>
+                      {transport.stops?.join(", ") || "No stops added"}
+                    </strong>
                   </p>
+
                   <p>
                     <span>Departure</span>
                     <strong>{transport.departureTime}</strong>
                   </p>
+
                   <p>
                     <span>Arrival</span>
                     <strong>{transport.arrivalTime}</strong>
                   </p>
+
                   <p>
                     <span>Available Seats</span>
                     <strong>{transport.availableSeats}</strong>
@@ -435,6 +441,7 @@ function Transport() {
                     <button onClick={() => handleEdit(transport)}>
                       Edit
                     </button>
+
                     <button
                       className="transport-delete-button"
                       onClick={() => handleDelete(transport._id)}

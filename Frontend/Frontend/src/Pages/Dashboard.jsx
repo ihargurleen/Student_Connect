@@ -1,4 +1,4 @@
-
+import api from "../ApiClient/api";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -80,22 +80,12 @@ function Dashboard() {
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/announcements/get-ann",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch announcements.");
-        }
+        const response = await api.get("/api/announcements/get-ann");
 
         setAnnouncements(
-          Array.isArray(data.annoucements) ? data.annoucements : []
+          Array.isArray(response.data.annoucements)
+            ? response.data.annoucements
+            : []
         );
       } catch (error) {
         console.error("Announcements error:", error);
@@ -107,21 +97,13 @@ function Dashboard() {
 
     const fetchEvents = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/events/get-event",
-          {
-            method: "GET",
-            credentials: "include",
-          }
+        const response = await api.get("/api/events/get-event");
+
+        setEvents(
+          Array.isArray(response.data.events)
+            ? response.data.events
+            : []
         );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to fetch events.");
-        }
-
-        setEvents(Array.isArray(data.events) ? data.events : []);
       } catch (error) {
         console.error("Events error:", error);
         setEventError("Unable to load campus events.");

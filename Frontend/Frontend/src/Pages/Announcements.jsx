@@ -1,5 +1,5 @@
-
 import { useEffect, useState } from "react";
+import api from "../ApiClient/api";
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState([]);
@@ -17,22 +17,17 @@ export default function Announcements() {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/announcements/get-ann",
-        { credentials: "include" }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch announcements.");
-      }
+      const response = await api.get("/api/announcements/get-ann");
 
       setAnnouncements(
-        Array.isArray(data.annoucements) ? data.annoucements : []
+        Array.isArray(response.data.annoucements)
+          ? response.data.annoucements
+          : []
       );
     } catch (error) {
-      setError(error.message);
+      setError(
+        error.response?.data?.message || "Failed to fetch announcements."
+      );
     } finally {
       setLoading(false);
     }
@@ -40,20 +35,12 @@ export default function Announcements() {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/get-user",
-        { credentials: "include" }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch user.");
-      }
-
-      setCurrentUser(data.user || data);
+      const response = await api.get("/api/auth/get-user");
+      setCurrentUser(response.data.user || response.data);
     } catch (error) {
-      setError(error.message);
+      setError(
+        error.response?.data?.message || "Failed to fetch user."
+      );
     }
   };
 
@@ -79,25 +66,14 @@ export default function Announcements() {
       setError("");
       setSuccess("");
 
-      const response = await fetch(
-        "http://localhost:5000/api/announcements/create-ann",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
-        }
+      const response = await api.post(
+        "/api/announcements/create-ann",
+        form
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to create announcement.");
-      }
-
-      setSuccess(data.message || "Announcement created successfully!");
+      setSuccess(
+        response.data.message || "Announcement created successfully!"
+      );
 
       setForm({
         title: "",
@@ -107,7 +83,9 @@ export default function Announcements() {
 
       await fetchAnnouncements();
     } catch (error) {
-      setError(error.message);
+      setError(
+        error.response?.data?.message || "Failed to create announcement."
+      );
     } finally {
       setCreating(false);
     }
@@ -146,56 +124,65 @@ export default function Announcements() {
           <h2>Create Announcement</h2>
 
           <form onSubmit={createAnnouncement}>
-  <div className="announcement-form-group">
-    <label htmlFor="title">Announcement Title</label>
-    <input
-      id="title"
-      type="text"
-      name="title"
-      value={form.title}
-      onChange={handleChange}
-      placeholder="Enter announcement title"
-      required
-    />
-  </div>
+            <div className="announcement-form-group">
+              <label htmlFor="title">Announcement Title</label>
+              <input
+                id="title"
+                type="text"
+                name="title"
+                value={form.title}
+                onChange={handleChange}
+                placeholder="Enter announcement title"
+                required
+              />
+            </div>
 
-  <div className="announcement-form-group">
-    <label htmlFor="message">Announcement Message</label>
-    <textarea
-      id="message"
-      name="message"
-      value={form.message}
-      onChange={handleChange}
-      placeholder="Enter announcement message"
-      required
-      rows={4}
-    />
-  </div>
+            <div className="announcement-form-group">
+              <label htmlFor="message">Announcement Message</label>
+              <textarea
+                id="message"
+                name="message"
+                value={form.message}
+                onChange={handleChange}
+                placeholder="Enter announcement message"
+                required
+                rows={4}
+              />
+            </div>
 
-  <div className="announcement-form-group">
-    <label htmlFor="targetAudience">Target Audience</label>
-    <select
-      id="targetAudience"
-      name="targetAudience"
-      value={form.targetAudience}
-      onChange={handleChange}
-    >
-      <option value="All">All Users</option>
-      <option value="Student">Students</option>
-      <option value="Faculty">Faculty</option>
-      <option value="Staff">Staff</option>
-    </select>
-  </div>
+            <div className="announcement-form-group">
+              <label htmlFor="targetAudience">Target Audience</label>
+              <select
+                id="targetAudience"
+                name="targetAudience"
+                value={form.targetAudience}
+                onChange={handleChange}
+              >
+                <option value="All">All Users</option>
+                <option value="Student">Students</option>
+                <option value="Faculty">Faculty</option>
+                <option value="Staff">Staff</option>
+              </select>
+            </div>
 
-  <button type="submit" disabled={creating}>
-    {creating ? "Creating..." : "Create Announcement"}
-  </button>
-</form>
+            <button type="submit" disabled={creating}>
+              {creating ? "Creating..." : "Create Announcement"}
+            </button>
+          </form>
         </section>
       )}
 
-      {error && <p className="notification-error" role="alert">{error}</p>}
-      {success && <p className="notification-success" role="status">{success}</p>}
+      {error && (
+        <p className="notification-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {success && (
+        <p className="notification-success" role="status">
+          {success}
+        </p>
+      )}
 
       <div className="section-heading">
         <div>

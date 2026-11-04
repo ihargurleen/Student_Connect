@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../ApiClient/api";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
@@ -26,31 +27,20 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/signup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        }
+      const response = await api.post(
+        "/api/auth/signup",
+        formData
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Signup failed.");
-      }
-
-      setMessage(data.message || "Signup successful!");
+      setMessage(response.data.message || "Signup successful!");
 
       setTimeout(() => {
         navigate("/signin");
       }, 1000);
     } catch (error) {
-      setMessage(error.message || "Unable to create account.");
+      setMessage(
+        error.response?.data?.message || "Unable to create account."
+      );
     } finally {
       setLoading(false);
     }

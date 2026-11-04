@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../ApiClient/api";
 
 export default function Signin() {
   const [formData, setFormData] = useState({
@@ -25,47 +25,24 @@ export default function Signin() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        }
+      const response = await api.post(
+        "/api/auth/login",
+        formData
       );
 
-      const data = await response.json();
-      console.log("Login message:", data.message);
+      console.log("Login message:", response.data.message);
 
-      if (!response.ok) {
-        throw new Error(data.message || "Signin failed.");
-      }
+      const userResponse = await api.get("/api/auth/get-user");
+      const userData = userResponse.data;
 
-      const userResponse = await fetch(
-        "http://localhost:5000/api/auth/get-user",
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-
-      const userData = await userResponse.json();
-           console.log("LOGIN RESPONSE:", data);
-           console.log("GET USER RESPONSE:", userData);
-      if (!userResponse.ok) {
-        throw new Error(
-          userData.message || "User verification failed."
-        );
-      }
+      console.log("LOGIN RESPONSE:", response.data);
+      console.log("GET USER RESPONSE:", userData);
 
       const loggedInUser = {
-        id: userData._id || data.user?.id,
-        userName: userData.userName || data.user?.userName,
-        email: userData.email || data.user?.email,
-        role: userData.role || data.user?.role,
+        id: userData._id || response.data.user?.id,
+        userName: userData.userName || response.data.user?.userName,
+        email: userData.email || response.data.user?.email,
+        role: userData.role || response.data.user?.role,
       };
 
       if (!loggedInUser.role) {
@@ -78,7 +55,11 @@ export default function Signin() {
 
       navigate("/");
     } catch (error) {
-      setMessage(error.message || "Unable to sign in.");
+      setMessage(
+        error.response?.data?.message ||
+        error.message ||
+        "Unable to sign in."
+      );
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import api from "../ApiClient/api";
 
 function CampusLocations() {
   const { currentUser } = useOutletContext();
   const isAdmin = currentUser?.role === "Admin";
-
-  const API = "http://localhost:5000/api/locations";
 
   const emptyForm = {
     name: "",
@@ -14,7 +12,7 @@ function CampusLocations() {
     floor: "",
     room: "",
     category: "",
-    description: ""
+    description: "",
   };
 
   const [search, setSearch] = useState("");
@@ -31,19 +29,17 @@ function CampusLocations() {
       setLoading(true);
       setError("");
 
-      const response = await fetch(`${API}/get`, {
-        credentials: "include"
-      });
+      const response = await api.get("/api/locations/get");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch locations");
-      }
-
-      setLocations(Array.isArray(data.locations) ? data.locations : []);
+      setLocations(
+        Array.isArray(response.data.locations)
+          ? response.data.locations
+          : []
+      );
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Failed to fetch locations"
+      );
     } finally {
       setLoading(false);
     }
@@ -58,7 +54,7 @@ function CampusLocations() {
 
     setForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -74,30 +70,20 @@ function CampusLocations() {
     setSubmitting(true);
 
     try {
-      const url = editingId
-        ? `${API}/update/${editingId}`
-        : `${API}/create`;
+      const response = editingId
+        ? await api.put(`/api/locations/update/${editingId}`, form)
+        : await api.post("/api/locations/create", form);
 
-      const response = await fetch(url, {
-        method: editingId ? "PUT" : "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(form)
-      });
+      setMessage(
+        response.data.message || "Location saved successfully"
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Operation failed");
-      }
-
-      setMessage(data.message || "Location saved successfully");
       resetForm();
       await fetchLocations();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Operation failed"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +98,7 @@ function CampusLocations() {
       floor: location.floor || "",
       room: location.room || "",
       category: location.category || "",
-      description: location.description || ""
+      description: location.description || "",
     });
 
     setMessage("");
@@ -120,7 +106,7 @@ function CampusLocations() {
 
     window.scrollTo({
       top: 0,
-      behavior: "smooth"
+      behavior: "smooth",
     });
   };
 
@@ -135,21 +121,19 @@ function CampusLocations() {
       setError("");
       setMessage("");
 
-      const response = await fetch(`${API}/delete/${id}`, {
-        method: "DELETE",
-        credentials: "include"
-      });
+      const response = await api.delete(
+        `/api/locations/delete/${id}`
+      );
 
-      const data = await response.json();
+      setMessage(
+        response.data.message || "Location deleted successfully"
+      );
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to delete location");
-      }
-
-      setMessage(data.message || "Location deleted successfully");
       await fetchLocations();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Failed to delete location"
+      );
     }
   };
 
@@ -280,8 +264,17 @@ function CampusLocations() {
         </section>
       )}
 
-      {message && <p className="success-message" role="status">{message}</p>}
-      {error && <p className="error-message" role="alert">{error}</p>}
+      {message && (
+        <p className="success-message" role="status">
+          {message}
+        </p>
+      )}
+
+      {error && (
+        <p className="error-message" role="alert">
+          {error}
+        </p>
+      )}
 
       <section className="location-search-section">
         <div className="section-heading">

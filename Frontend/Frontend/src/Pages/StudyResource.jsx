@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import api from "../ApiClient/api";
 
-const API = "http://localhost:5000/api/resource";
-const SERVER = "http://localhost:5000";
+const SERVER = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
+).replace(/\/$/, "");
 
 const initialForm = {
   title: "",
@@ -34,15 +36,8 @@ function StudyResources() {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/get-user",
-        { credentials: "include" }
-      );
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setUser(data.user || data);
+      const response = await api.get("/api/auth/get-user");
+      setUser(response.data.user || response.data);
     } catch {
       setUser(null);
     }
@@ -52,19 +47,17 @@ function StudyResources() {
     try {
       setError("");
 
-      const response = await fetch(`${API}/get-resource`, {
-        credentials: "include",
-      });
+      const response = await api.get("/api/resource/get-resource");
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to fetch resources.");
-      }
-
-      setResources(Array.isArray(data.resources) ? data.resources : []);
+      setResources(
+        Array.isArray(response.data.resources)
+          ? response.data.resources
+          : []
+      );
     } catch (err) {
-      setError(err.message || "Unable to load resources.");
+      setError(
+        err.response?.data?.message || "Unable to load resources."
+      );
     } finally {
       setLoading(false);
     }
@@ -154,7 +147,9 @@ function StudyResources() {
       Object.entries(form).forEach(([key, value]) => {
         formData.append(
           key,
-          key === "resourceUrl" && form.resourceType !== "Link" ? "" : value
+          key === "resourceUrl" && form.resourceType !== "Link"
+            ? ""
+            : value
         );
       });
 
@@ -162,28 +157,25 @@ function StudyResources() {
         formData.append("resourceFile", resourceFile);
       }
 
-      const response = await fetch(
-        isEditing
-          ? `${API}/update-resource/${editingId}`
-          : `${API}/create-resource`,
-        {
-          method: isEditing ? "PUT" : "POST",
-          credentials: "include",
-          body: formData,
-        }
-      );
+      const response = isEditing
+        ? await api.put(
+            `/api/resource/update-resource/${editingId}`,
+            formData
+          )
+        : await api.post(
+            "/api/resource/create-resource",
+            formData
+          );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to save resource.");
-      }
-
-      setMessage(data.message || "Resource saved successfully.");
+      setMessage(response.data.message || "Resource saved successfully.");
       resetForm();
       await fetchResources();
     } catch (err) {
-      setError(err.message || "Unable to save resource.");
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        "Unable to save resource."
+      );
     } finally {
       setSaving(false);
     }
@@ -219,23 +211,18 @@ function StudyResources() {
     setMessage("");
 
     try {
-      const response = await fetch(`${API}/delete-resource/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to delete resource.");
-      }
+      const response = await api.delete(
+        `/api/resource/delete-resource/${id}`
+      );
 
       if (editingId === id) resetForm();
 
-      setMessage(data.message || "Resource deleted successfully.");
+      setMessage(response.data.message || "Resource deleted successfully.");
       await fetchResources();
     } catch (err) {
-      setError(err.message || "Unable to delete resource.");
+      setError(
+        err.response?.data?.message || "Unable to delete resource."
+      );
     }
   };
 
@@ -276,6 +263,7 @@ function StudyResources() {
           <h1>Study Resources</h1>
           <p>Explore learning materials to support your studies.</p>
         </div>
+
         <div className="resources-total">
           <span>Total Resources</span>
           <strong>{resources.length}</strong>
@@ -385,6 +373,7 @@ function StudyResources() {
                   onChange={handleFileChange}
                   required={!editingId}
                 />
+
                 <p className="resource-help-text">
                   PDF, DOC, DOCX, PPT, PPTX, JPG, PNG, WEBP · Maximum 10 MB
                 </p>
@@ -431,11 +420,15 @@ function StudyResources() {
       )}
 
       {message && (
-        <p className="resource-success" role="status">{message}</p>
+        <p className="resource-success" role="status">
+          {message}
+        </p>
       )}
 
       {error && (
-        <p className="resource-error" role="alert">{error}</p>
+        <p className="resource-error" role="alert">
+          {error}
+        </p>
       )}
 
       <section className="available-resources">
@@ -444,6 +437,7 @@ function StudyResources() {
             <span className="section-kicker">YOUR LEARNING MATERIAL</span>
             <h2>Available Resources</h2>
           </div>
+
           <span className="resource-count">
             {filteredResources.length} Resources
           </span>
@@ -469,7 +463,9 @@ function StudyResources() {
             >
               <option value="All">All Resources</option>
               {resourceTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
           </div>
@@ -488,66 +484,72 @@ function StudyResources() {
         )}
 
         <div className="resource-grid">
-          {!loading && filteredResources.map((resource) => (
-            <article className="resource-card" key={resource._id}>
-              <div className="resource-card-top">
-                <span className="resource-type-badge">
-                  {resource.resourceType}
-                </span>
-                <span className="resource-semester-badge">
-                  Semester {resource.semester}
-                </span>
-              </div>
+          {!loading &&
+            filteredResources.map((resource) => (
+              <article className="resource-card" key={resource._id}>
+                <div className="resource-card-top">
+                  <span className="resource-type-badge">
+                    {resource.resourceType}
+                  </span>
 
-              <h3 className="resource-card-title">{resource.title}</h3>
+                  <span className="resource-semester-badge">
+                    Semester {resource.semester}
+                  </span>
+                </div>
 
-              <p className="resource-card-description">
-                {resource.description}
-              </p>
+                <h3 className="resource-card-title">{resource.title}</h3>
 
-              <div className="resource-card-details">
-                <p><strong>Subject:</strong> {resource.subject}</p>
-                <p>
-                  <strong>Uploaded by:</strong>{" "}
-                  {resource.uploadedBy?.userName || "Unknown"}
+                <p className="resource-card-description">
+                  {resource.description}
                 </p>
-              </div>
 
-              <div className="resource-card-footer">
-                {resource.resourceUrl && (
-                  <a
-                    className="resource-open-button"
-                    href={getResourceUrl(resource.resourceUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {resource.resourceType === "Link"
-                      ? "Open Resource"
-                      : "View / Download"}
-                  </a>
-                )}
+                <div className="resource-card-details">
+                  <p>
+                    <strong>Subject:</strong> {resource.subject}
+                  </p>
 
-                {canManage && (
-                  <div className="resource-card-actions">
-                    <button
-                      className="resource-edit-button"
-                      type="button"
-                      onClick={() => handleEdit(resource)}
+                  <p>
+                    <strong>Uploaded by:</strong>{" "}
+                    {resource.uploadedBy?.userName || "Unknown"}
+                  </p>
+                </div>
+
+                <div className="resource-card-footer">
+                  {resource.resourceUrl && (
+                    <a
+                      className="resource-open-button"
+                      href={getResourceUrl(resource.resourceUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
-                      Edit
-                    </button>
-                    <button
-                      className="resource-delete-button"
-                      type="button"
-                      onClick={() => handleDelete(resource._id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            </article>
-          ))}
+                      {resource.resourceType === "Link"
+                        ? "Open Resource"
+                        : "View / Download"}
+                    </a>
+                  )}
+
+                  {canManage && (
+                    <div className="resource-card-actions">
+                      <button
+                        className="resource-edit-button"
+                        type="button"
+                        onClick={() => handleEdit(resource)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="resource-delete-button"
+                        type="button"
+                        onClick={() => handleDelete(resource._id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
         </div>
       </section>
     </div>

@@ -1,6 +1,6 @@
-
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
+import api from "../ApiClient/api"
 
 export default function ProtectedRoute() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -9,15 +9,8 @@ export default function ProtectedRoute() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:5000/api/auth/get-user",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        setAuthenticated(response.ok);
+        await api.get("/api/auth/get-user");
+        setAuthenticated(true);
       } catch {
         setAuthenticated(false);
       } finally {

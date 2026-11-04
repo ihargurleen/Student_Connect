@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
@@ -9,6 +8,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react";
+import api from "../ApiClient/api";
 
 function AddUser() {
   const { currentUser } = useOutletContext();
@@ -34,22 +34,17 @@ function AddUser() {
     setUsersLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/users",
-        {
-          credentials: "include",
-        }
-      );
+      setError("");
 
-      const data = await response.json();
+      const response = await api.get("/api/admin/users");
 
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to fetch users.");
-      }
+      const data = response.data;
 
       setUsers(Array.isArray(data) ? data : data.users || []);
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Unable to fetch users."
+      );
     } finally {
       setUsersLoading(false);
     }
@@ -60,10 +55,10 @@ function AddUser() {
   }, []);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -73,25 +68,14 @@ function AddUser() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/admin/create-user",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(formData),
-        }
+      const response = await api.post(
+        "/api/admin/create-user",
+        formData
       );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to create account.");
-      }
-
-      setMessage(data.message || "Account created successfully.");
+      setMessage(
+        response.data.message || "Account created successfully."
+      );
 
       setFormData({
         userName: "",
@@ -102,7 +86,9 @@ function AddUser() {
 
       await fetchUsers();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Unable to create account."
+      );
     } finally {
       setLoading(false);
     }
@@ -114,28 +100,20 @@ function AddUser() {
     setUpdatingId(userId);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}/role`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ role }),
-        }
+      const response = await api.put(
+        `/api/admin/users/${userId}/role`,
+        { role }
       );
 
-      const data = await response.json();
+      setMessage(
+        response.data.message || "User role updated successfully."
+      );
 
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to update role.");
-      }
-
-      setMessage(data.message || "User role updated successfully.");
       await fetchUsers();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Unable to update role."
+      );
     } finally {
       setUpdatingId("");
     }
@@ -153,24 +131,19 @@ function AddUser() {
     setDeletingId(userId);
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/admin/users/${userId}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
+      const response = await api.delete(
+        `/api/admin/users/${userId}`
       );
 
-      const data = await response.json();
+      setMessage(
+        response.data.message || "User deleted successfully."
+      );
 
-      if (!response.ok) {
-        throw new Error(data.message || "Unable to delete user.");
-      }
-
-      setMessage(data.message || "User deleted successfully.");
       await fetchUsers();
     } catch (err) {
-      setError(err.message);
+      setError(
+        err.response?.data?.message || "Unable to delete user."
+      );
     } finally {
       setDeletingId("");
     }
@@ -183,7 +156,7 @@ function AddUser() {
   );
 
   return (
-    <div className="page-content  manage-users-page">
+    <div className="page-content manage-users-page">
       <section className="welcome-section">
         <div>
           <div className="eyebrow">
@@ -326,7 +299,11 @@ function AddUser() {
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          <button type="button" onClick={fetchUsers}>
+          <button
+            type="button"
+            onClick={fetchUsers}
+            disabled={usersLoading}
+          >
             <RefreshCw size={17} />
           </button>
         </div>
@@ -351,6 +328,7 @@ function AddUser() {
               <tbody>
                 {filteredUsers.map((user) => {
                   const userId = user._id || user.id;
+
                   const isCurrentUser =
                     String(userId) === String(currentUserId);
 
